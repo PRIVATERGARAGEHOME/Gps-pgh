@@ -1,0 +1,685 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#090b0e">
+<title>RaceLab GPS</title>
+
+<style>
+:root {
+  --bg:#090b0e;
+  --panel:#12161b;
+  --line:#272e36;
+  --text:#f4f7fa;
+  --muted:#89939f;
+  --green:#b6ff4a;
+  --red:#ff5d65;
+}
+* { box-sizing:border-box; }
+body {
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:Arial,Helvetica,sans-serif;
+}
+header {
+  padding:20px 18px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+.logo { font-size:20px;font-weight:900;letter-spacing:1px; }
+.logo span { color:var(--green); }
+.status { font-size:11px;color:var(--muted); }
+.wrap { max-width:650px;margin:auto;padding:16px; }
+.panel {
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:18px;
+  margin-bottom:14px;
+}
+.label {
+  font-size:11px;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:1.5px;
+}
+.speedbox { text-align:center;padding:25px 10px; }
+.speed {
+  font-size:clamp(76px,20vw,116px);
+  font-weight:800;
+  letter-spacing:-5px;
+  line-height:1.15;
+  margin:10px 0 4px;
+  font-variant-numeric:tabular-nums;
+}
+.unit { color:var(--green);font-size:14px;font-weight:bold; }
+.gpsline { color:var(--muted);font-size:12px;margin-top:15px; }
+.dot {
+  display:inline-block;width:7px;height:7px;border-radius:50%;
+  background:var(--red);margin-right:6px;
+}
+.dot.on { background:var(--green); }
+.stats {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+.stat {
+  background:#0c0f13;
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:14px;
+  min-width:0;
+}
+.stat strong {
+  display:block;font-size:25px;margin-top:9px;
+  font-variant-numeric:tabular-nums;
+  overflow-wrap:anywhere;
+}
+.stat small { color:var(--muted);font-size:11px; }
+.tabs { display:flex;gap:8px;margin-bottom:12px; }
+button,select {
+  font:inherit;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:12px;
+  color:var(--text);
+  background:#191e24;
+}
+button { cursor:pointer; }
+button:active { transform:scale(.98); }
+button.primary {
+  background:var(--green);color:#11170a;
+  font-weight:800;border-color:var(--green);
+}
+button.active { border-color:var(--green);color:var(--green); }
+.tabs button { flex:1;font-size:12px; }
+.actions { display:flex;gap:8px;flex-wrap:wrap;margin-top:12px; }
+.actions button { flex:1;min-width:110px; }
+.full { width:100%;margin-top:12px; }
+.row {
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;margin-bottom:12px;
+}
+select { max-width:58%; }
+.result {
+  font-size:34px;font-weight:800;margin:15px 0;
+  font-variant-numeric:tabular-nums;
+}
+.note { color:var(--muted);font-size:12px;line-height:1.6; }
+canvas { width:100%;height:150px;display:block; }
+.history-item {
+  padding:12px 0;border-bottom:1px solid var(--line);
+  display:flex;justify-content:space-between;gap:10px;
+  font-size:13px;
+}
+.history-item:last-child { border-bottom:0; }
+.history-item span { color:var(--muted);font-size:11px; }
+.hidden { display:none!important; }
+footer {
+  text-align:center;color:var(--muted);font-size:11px;
+  padding:8px 10px 28px;line-height:1.7;
+}
+@media(min-width:520px) {
+  .stats { grid-template-columns:repeat(4,minmax(0,1fr)); }
+  .stat { padding:12px; }
+  .stat strong { font-size:22px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">RACE<span>LAB</span> GPS</div>
+  <div class="status">GPS PERFORMANCE TOOL</div>
+</header>
+
+<main class="wrap">
+  <section class="panel speedbox">
+    <div class="label">Live GPS Speed</div>
+    <div class="speed" id="speed">0.0</div>
+    <div class="unit">KM/H</div>
+    <div class="gpsline">
+      <span class="dot" id="gpsDot"></span>
+      <span id="gpsStatus">GPS belum aktif</span>
+    </div>
+    <button class="primary full" id="gpsBtn">AKTIFKAN GPS</button>
+  </section>
+
+  <section class="stats">
+    <div class="stat">
+      <div class="label">Top Speed</div>
+      <strong id="topSpeed">0.0</strong>
+      <small>km/h</small>
+    </div>
+    <div class="stat">
+      <div class="label">Jarak</div>
+      <strong id="distance">0.00</strong>
+      <small>km</small>
+    </div>
+    <div class="stat">
+      <div class="label">Rata-rata</div>
+      <strong id="avgSpeed">0.0</strong>
+      <small>km/h</small>
+    </div>
+    <div class="stat">
+      <div class="label">Akurasi GPS</div>
+      <strong id="accuracy">--</strong>
+      <small>meter</small>
+    </div>
+  </section>
+
+  <section class="panel" style="margin-top:14px">
+    <div class="row">
+      <div class="label">Speed Graph</div>
+      <button id="clearGraph" style="padding:7px 10px;font-size:11px">Reset grafik</button>
+    </div>
+    <canvas id="graph"></canvas>
+  </section>
+
+  <section class="panel">
+    <div class="label">Acceleration Test</div>
+    <div class="row" style="margin-top:14px">
+      <span class="note">Target kecepatan</span>
+      <select id="accTarget">
+        <option value="60">0–60 km/h</option>
+        <option value="80">0–80 km/h</option>
+        <option value="100">0–100 km/h</option>
+      </select>
+    </div>
+    <div class="result" id="accResult">--.-- s</div>
+    <div class="note" id="accStatus">Aktifkan GPS, lalu tekan mulai saat motor berhenti.</div>
+    <div class="actions">
+      <button class="primary" id="accStart">MULAI TES</button>
+      <button id="accReset">RESET</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="label">Distance Test</div>
+    <div class="row" style="margin-top:14px">
+      <span class="note">Jarak pengujian</span>
+      <select id="distTarget">
+        <option value="201.168">201 meter (1/8 mile)</option>
+        <option value="402.336">402 meter (1/4 mile)</option>
+      </select>
+    </div>
+    <div class="result" id="distTime">--.-- s</div>
+    <div class="note" id="distStatus">Mulai dari posisi berhenti di lintasan lurus.</div>
+    <div class="stats" style="margin-top:14px">
+      <div class="stat">
+        <div class="label">Jarak tes</div>
+        <strong id="distProgress">0 m</strong>
+      </div>
+      <div class="stat">
+        <div class="label">Kecepatan akhir</div>
+        <strong id="finishSpeed">--</strong>
+        <small>km/h</small>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="primary" id="distStart">MULAI TES</button>
+      <button id="distReset">RESET</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="row">
+      <div class="label">Riwayat Pengujian</div>
+      <button id="exportBtn" style="padding:7px 10px;font-size:11px">Export CSV</button>
+    </div>
+    <div id="history" class="note">Belum ada hasil tes.</div>
+    <button id="clearHistory" class="full">HAPUS RIWAYAT</button>
+  </section>
+
+  <section class="panel">
+    <div class="label">Sesi GPS</div>
+    <div class="note" style="margin-top:10px">
+      Reset sesi akan menghapus jarak dan top speed sesi saat ini.
+      Riwayat hasil tes tidak ikut terhapus.
+    </div>
+    <button id="resetSession" class="full">RESET SESI</button>
+  </section>
+</main>
+
+<footer>
+  RaceLab GPS · Menggunakan sensor lokasi perangkat<br>
+  Hasil GPS dapat berbeda dari alat pengukur profesional.
+  Gunakan hanya di lintasan tertutup yang aman.
+</footer>
+
+<!-- BAGIAN 2 DIMULAI DI SINI -->
+
+<script>
+const $ = id => document.getElementById(id);
+
+let gpsWatch = null;
+let gpsOn = false;
+let speed = 0;
+let top = 0;
+let totalDistance = 0;
+let speedSum = 0;
+let speedCount = 0;
+let lastPosition = null;
+let samples = [];
+let graphValues = [];
+let accTest = null;
+let distTest = null;
+let historyData = JSON.parse(localStorage.getItem("racelabHistory") || "[]");
+
+const toKmh = mps => mps * 3.6;
+
+function distanceBetween(a, b) {
+  const R = 6371000;
+  const rad = n => n * Math.PI / 180;
+  const dLat = rad(b.latitude - a.latitude);
+  const dLon = rad(b.longitude - a.longitude);
+  const x = Math.sin(dLat / 2) ** 2 +
+    Math.cos(rad(a.latitude)) * Math.cos(rad(b.latitude)) *
+    Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+}
+
+function saveHistory(type, result, detail) {
+  historyData.unshift({
+    date: new Date().toLocaleString("id-ID"),
+    type,
+    result,
+    detail
+  });
+  historyData = historyData.slice(0, 100);
+  localStorage.setItem("racelabHistory", JSON.stringify(historyData));
+  renderHistory();
+}
+
+function renderHistory() {
+  const box = $("history");
+  if (!historyData.length) {
+    box.textContent = "Belum ada hasil tes.";
+    return;
+  }
+
+  box.innerHTML = "";
+  historyData.forEach(item => {
+    const row = document.createElement("div");
+    row.className = "history-item";
+
+    const left = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = item.type;
+    const date = document.createElement("div");
+    date.textContent = item.date;
+    date.style.color = "#89939f";
+    date.style.fontSize = "11px";
+    date.style.marginTop = "5px";
+    left.append(title, date);
+
+    const right = document.createElement("div");
+    right.style.textAlign = "right";
+    const value = document.createElement("strong");
+    value.textContent = item.result;
+    const detail = document.createElement("div");
+    detail.textContent = item.detail || "";
+    detail.style.color = "#89939f";
+    detail.style.fontSize = "11px";
+    detail.style.marginTop = "5px";
+    right.append(value, detail);
+
+    row.append(left, right);
+    box.append(row);
+  });
+}
+
+function setGpsStatus(text, active = false) {
+  $("gpsStatus").textContent = text;
+  $("gpsDot").classList.toggle("on", active);
+}
+
+function startGPS() {
+  if (!("geolocation" in navigator)) {
+    setGpsStatus("Browser tidak mendukung GPS");
+    return;
+  }
+  if (gpsOn) {
+    stopGPS();
+    return;
+  }
+
+  gpsOn = true;
+  $("gpsBtn").textContent = "MATIKAN GPS";
+  setGpsStatus("Menunggu sinyal GPS...");
+
+  gpsWatch = navigator.geolocation.watchPosition(
+    onGPS,
+    err => {
+      const messages = {
+        1: "Izin lokasi ditolak",
+        2: "Sinyal lokasi tidak tersedia",
+        3: "GPS timeout"
+      };
+      setGpsStatus(messages[err.code] || "GPS bermasalah");
+      if (err.code === 1) {
+        stopGPS();
+      }
+    },
+    {
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 15000
+    }
+  );
+}
+
+function stopGPS() {
+  if (gpsWatch !== null) {
+    navigator.geolocation.clearWatch(gpsWatch);
+  }
+  gpsWatch = null;
+  gpsOn = false;
+  $("gpsBtn").textContent = "AKTIFKAN GPS";
+  setGpsStatus("GPS tidak aktif");
+}
+
+function onGPS(position) {
+  const c = position.coords;
+  const now = position.timestamp || Date.now();
+  const current = {
+    latitude: c.latitude,
+    longitude: c.longitude,
+    time: now
+  };
+
+  if (Number.isFinite(c.accuracy)) {
+    $("accuracy").textContent = Math.round(c.accuracy);
+  }
+
+  if (c.accuracy > 50) {
+    setGpsStatus("Akurasi GPS rendah", false);
+    return;
+  }
+
+  let rawSpeed = Number.isFinite(c.speed) && c.speed >= 0
+    ? toKmh(c.speed)
+    : null;
+
+  if (lastPosition) {
+    const dt = (now - lastPosition.time) / 1000;
+    const moved = distanceBetween(lastPosition, current);
+
+    if (dt > 0 && dt < 10 && moved < 200) {
+      if (rawSpeed === null) {
+        rawSpeed = moved / dt * 3.6;
+      }
+
+      if (moved > 1.5 && dt > 0) {
+        totalDistance += moved;
+      }
+    }
+  }
+
+  lastPosition = current;
+
+  if (rawSpeed === null) rawSpeed = 0;
+
+  // Hindari lonjakan GPS yang tidak masuk akal.
+  if (rawSpeed > 300) {
+    setGpsStatus("Pembacaan GPS tidak wajar");
+    return;
+  }
+
+  speed = rawSpeed;
+  top = Math.max(top, speed);
+  speedSum += speed;
+  speedCount++;
+
+  $("speed").textContent = speed.toFixed(1);
+  $("topSpeed").textContent = top.toFixed(1);
+  $("distance").textContent = (totalDistance / 1000).toFixed(2);
+  $("avgSpeed").textContent =
+    (speedSum / Math.max(speedCount, 1)).toFixed(1);
+
+  setGpsStatus("GPS aktif · ±" + Math.round(c.accuracy) + " m", true);
+
+  graphValues.push(speed);
+  if (graphValues.length > 80) graphValues.shift();
+  drawGraph();
+
+  updateAcceleration(now);
+  updateDistanceTest(current, now);
+}
+
+function drawGraph() {
+  const canvas = $("graph");
+  const rect = canvas.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(rect.width * dpr);
+  canvas.height = Math.round(rect.height * dpr);
+
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+
+  const w = rect.width;
+  const h = rect.height;
+  ctx.clearRect(0, 0, w, h);
+
+  ctx.strokeStyle = "#272e36";
+  ctx.lineWidth = 1;
+
+  for (let i = 1; i <= 3; i++) {
+    const y = h * i / 4;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(w, y);
+    ctx.stroke();
+  }
+
+  if (graphValues.length < 2) return;
+
+  const maxValue = Math.max(20, ...graphValues) * 1.15;
+  ctx.strokeStyle = "#b6ff4a";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+
+  graphValues.forEach((v, i) => {
+    const x = i / (graphValues.length - 1) * w;
+    const y = h - (v / maxValue) * (h - 8) - 4;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+
+  ctx.stroke();
+}
+
+function updateAcceleration(now) {
+  if (!accTest || accTest.done) return;
+
+  if (!accTest.started) {
+    if (speed >= 3) {
+      accTest.started = true;
+      accTest.startTime = now;
+      $("accStatus").textContent = "Tes berjalan...";
+    } else {
+      $("accStatus").textContent =
+        "Siap. Mulai bergerak untuk memulai penghitungan.";
+      return;
+    }
+  }
+
+  const elapsed = (now - accTest.startTime) / 1000;
+  $("accResult").textContent = elapsed.toFixed(2) + " s";
+
+  if (speed >= accTest.target) {
+    accTest.done = true;
+    $("accStatus").textContent = "Tes selesai · " +
+      accTest.target + " km/h tercapai";
+    saveHistory(
+      "0–" + accTest.target + " km/h",
+      elapsed.toFixed(2) + " s",
+      "GPS speed"
+    );
+  }
+}
+
+function updateDistanceTest(current, now) {
+  if (!distTest || distTest.done) return;
+
+  if (!distTest.started) {
+    if (speed >= 3) {
+      distTest.started = true;
+      distTest.startTime = now;
+      distTest.startPoint = current;
+      $("distStatus").textContent = "Tes berjalan...";
+    } else {
+      $("distStatus").textContent =
+        "Siap. Mulai bergerak untuk memulai penghitungan.";
+      return;
+    }
+  }
+
+  const meters = distanceBetween(distTest.startPoint, current);
+  const elapsed = (now - distTest.startTime) / 1000;
+  $("distProgress").textContent = Math.round(meters) + " m";
+  $("distTime").textContent = elapsed.toFixed(2) + " s";
+
+  if (meters >= distTest.target) {
+    distTest.done = true;
+    $("finishSpeed").textContent = speed.toFixed(1);
+    $("distStatus").textContent = "Jarak target tercapai.";
+    saveHistory(
+      Math.round(distTest.target) + " m",
+      elapsed.toFixed(2) + " s",
+      speed.toFixed(1) + " km/h"
+    );
+  }
+}
+
+$("gpsBtn").addEventListener("click", startGPS);
+
+$("clearGraph").addEventListener("click", () => {
+  graphValues = [];
+  drawGraph();
+});
+
+$("accStart").addEventListener("click", () => {
+  if (!gpsOn) {
+    $("accStatus").textContent = "Aktifkan GPS terlebih dahulu.";
+    return;
+  }
+  if (accTest && !accTest.done) {
+    $("accStatus").textContent = "Tes sedang berlangsung.";
+    return;
+  }
+
+  accTest = {
+    target: Number($("accTarget").value),
+    started: false,
+    startTime: 0,
+    done: false
+  };
+  $("accResult").textContent = "--.-- s";
+  $("accStatus").textContent =
+    "Bersiaplah di lintasan aman. Penghitungan dimulai saat bergerak.";
+});
+
+$("accReset").addEventListener("click", () => {
+  accTest = null;
+  $("accResult").textContent = "--.-- s";
+  $("accStatus").textContent = "Tes direset.";
+});
+
+$("distStart").addEventListener("click", () => {
+  if (!gpsOn) {
+    $("distStatus").textContent = "Aktifkan GPS terlebih dahulu.";
+    return;
+  }
+  if (distTest && !distTest.done) {
+    $("distStatus").textContent = "Tes sedang berlangsung.";
+    return;
+  }
+
+  distTest = {
+    target: Number($("distTarget").value),
+    started: false,
+    startTime: 0,
+    startPoint: null,
+    done: false
+  };
+  $("distTime").textContent = "--.-- s";
+  $("distProgress").textContent = "0 m";
+  $("finishSpeed").textContent = "--";
+  $("distStatus").textContent =
+    "Bersiap di lintasan lurus dan aman.";
+});
+
+$("distReset").addEventListener("click", () => {
+  distTest = null;
+  $("distTime").textContent = "--.-- s";
+  $("distProgress").textContent = "0 m";
+  $("finishSpeed").textContent = "--";
+  $("distStatus").textContent = "Tes direset.";
+});
+
+$("resetSession").addEventListener("click", () => {
+  top = 0;
+  totalDistance = 0;
+  speedSum = 0;
+  speedCount = 0;
+  lastPosition = null;
+  $("topSpeed").textContent = "0.0";
+  $("distance").textContent = "0.00";
+  $("avgSpeed").textContent = "0.0";
+  graphValues = [];
+  accTest = null;
+  distTest = null;
+  drawGraph();
+});
+
+$("clearHistory").addEventListener("click", () => {
+  if (!confirm("Hapus seluruh riwayat tes?")) return;
+  historyData = [];
+  localStorage.removeItem("racelabHistory");
+  renderHistory();
+});
+
+$("exportBtn").addEventListener("click", () => {
+  if (!historyData.length) {
+    alert("Belum ada riwayat untuk diekspor.");
+    return;
+  }
+
+  const escapeCsv = value =>
+    '"' + String(value ?? "").replace(/"/g, '""') + '"';
+
+  const rows = [
+    ["Tanggal", "Jenis Tes", "Hasil", "Detail"],
+    ...historyData.map(item => [
+      item.date, item.type, item.result, item.detail
+    ])
+  ];
+
+  const csv = rows.map(row => row.map(escapeCsv).join(",")).join("\r\n");
+  const blob = new Blob(["\uFEFF" + csv], {
+    type: "text/csv;charset=utf-8;"
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "racelab-history.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+window.addEventListener("resize", drawGraph);
+renderHistory();
+drawGraph();
+</script>
+</body>
+</html>
+
