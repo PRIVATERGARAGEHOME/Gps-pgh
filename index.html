@@ -1,0 +1,736 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111">
+<title>RaceLab GPS</title>
+
+<style>
+:root {
+  --case:#202222;
+  --lcd:#bec1b6;
+  --ink:#20221e;
+  --red:#d8393d;
+}
+* { box-sizing:border-box; }
+html,body {
+  margin:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  font-family:Arial,sans-serif;
+  background:#111;
+  color:#eee;
+}
+button { font:inherit; }
+.wrap {
+  width:100%;
+  height:100%;
+  padding:6px;
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  overflow:hidden;
+}
+.device {
+  flex:1;
+  min-height:0;
+  display:grid;
+  grid-template-columns:52px minmax(0,1fr) 52px;
+  grid-template-rows:22px minmax(0,1fr) 13px;
+  grid-template-areas:
+    "brand brand brand"
+    "left lcd right"
+    "legend legend legend";
+  gap:5px;
+  padding:7px;
+  border-radius:15px;
+  border:1px solid #555;
+  background:linear-gradient(140deg,#4a4c4c,#171818 40%,#080808 75%,#373939);
+  box-shadow:0 5px 15px #0009,inset 0 1px #777;
+}
+.brand {
+  grid-area:brand;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 3px;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:1.5px;
+}
+.brand b { color:var(--red); }
+.brand small { color:#999; font-size:7px; }
+.lcd {
+  grid-area:lcd;
+  min-width:0;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  background:var(--lcd);
+  color:var(--ink);
+  border:3px solid #070808;
+  border-radius:3px;
+  box-shadow:inset 0 0 0 1px #7c8076,inset 0 0 12px #5555;
+  font-family:"Courier New",monospace;
+  font-weight:bold;
+}
+.lcdtop {
+  flex:none;
+  height:23px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:3px;
+  padding:2px 5px;
+  border-bottom:1px solid #85877e;
+  font-size:clamp(9px,2.2vw,12px);
+}
+#gpsText {
+  border:0;
+  background:transparent;
+  color:var(--ink);
+  font-family:inherit;
+  font-weight:bold;
+  font-size:inherit;
+  padding:3px 0 3px 3px;
+  white-space:nowrap;
+}
+.screen {
+  flex:1;
+  min-height:0;
+  overflow:auto;
+  padding:5px;
+  scrollbar-width:thin;
+  scrollbar-color:#73766d transparent;
+}
+.heading {
+  text-align:center;
+  font-size:clamp(11px,2.6vw,17px);
+  padding:3px 0 5px;
+  margin-bottom:4px;
+  border-bottom:1px solid #85877e;
+}
+.row {
+  display:flex;
+  align-items:center;
+  gap:5px;
+  min-height:clamp(25px,5.2vh,38px);
+  padding:3px 5px;
+  font-size:clamp(11px,2.6vw,16px);
+}
+.row .value { margin-left:auto; font-size:.8em; }
+.row.selected { background:#252722; color:#fff; }
+.center {
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+  gap:5px;
+  min-height:140px;
+  height:calc(100% - 32px);
+}
+.logo {
+  font-size:clamp(25px,7vw,44px);
+  letter-spacing:-2px;
+}
+.logo b { color:var(--red); }
+.big {
+  font-size:clamp(35px,9vw,68px);
+  line-height:1;
+  letter-spacing:-3px;
+}
+.count {
+  font-size:clamp(55px,13vw,100px);
+  line-height:1;
+}
+.small { font-size:clamp(9px,2.2vw,12px); }
+.keys { display:contents; }
+.key {
+  width:100%;
+  height:clamp(38px,8vh,58px);
+  border:1px solid #050505;
+  border-radius:7px;
+  color:#eee;
+  background:linear-gradient(#505252,#1a1b1b 60%,#080808);
+  box-shadow:0 2px 0 #050505,inset 0 1px #777;
+  font-size:18px;
+  font-weight:bold;
+  touch-action:manipulation;
+}
+.key small {
+  display:block;
+  color:#aaa;
+  font-size:7px;
+  margin-top:1px;
+}
+.key:active { transform:translateY(2px); }
+#up {
+  grid-column:1;grid-row:2;
+  align-self:start;margin-top:10%;
+}
+#down {
+  grid-column:1;grid-row:2;
+  align-self:end;margin-bottom:10%;
+}
+#back {
+  grid-column:3;grid-row:2;
+  align-self:start;margin-top:10%;
+}
+#enter {
+  grid-column:3;grid-row:2;
+  align-self:end;margin-bottom:10%;
+}
+.legend {
+  grid-area:legend;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:0 2px;
+  color:#888;
+  font-size:7px;
+  letter-spacing:.5px;
+}
+.metrics {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  border-top:1px solid #85877e;
+  margin-top:4px;
+}
+.metric {
+  min-width:0;
+  padding:5px 2px;
+  text-align:center;
+}
+.metric:nth-child(even) { border-left:1px solid #85877e; }
+.metric:nth-child(n+3) { border-top:1px solid #85877e; }
+.metric label {
+  display:block;
+  font-size:clamp(8px,2vw,11px);
+}
+.metric strong {
+  display:block;
+  margin-top:3px;
+  font-size:clamp(14px,3.5vw,23px);
+  overflow-wrap:anywhere;
+}
+.footer {
+  display:flex;
+  justify-content:space-between;
+  margin-top:5px;
+  padding-top:4px;
+  border-top:1px solid #85877e;
+  font-size:9px;
+}
+.status {
+  flex:none;
+  text-align:center;
+  min-height:14px;
+  font-size:10px;
+  line-height:1.3;
+  color:#ddd;
+}
+.guide {
+  flex:none;
+  max-height:35px;
+  overflow:hidden;
+  padding:5px 7px;
+  border:1px solid #444;
+  border-radius:6px;
+  background:#202222;
+  font-size:9px;
+  line-height:1.3;
+  color:#ddd;
+}
+.guide b { color:#ff696d; }
+table {
+  width:100%;
+  border-collapse:collapse;
+  font-size:clamp(9px,2.3vw,13px);
+}
+td {
+  padding:5px 3px;
+  border-bottom:1px solid #85877e;
+  overflow-wrap:anywhere;
+}
+td:last-child { text-align:right; }
+@media (max-height:420px) {
+  .wrap { padding:3px;gap:3px; }
+  .device {
+    padding:4px;
+    gap:3px;
+    grid-template-columns:44px minmax(0,1fr) 44px;
+    grid-template-rows:17px minmax(0,1fr) 9px;
+  }
+  .brand { font-size:8px; }
+  .lcdtop { height:18px; }
+  .screen { padding:3px; }
+  .heading { padding:2px;margin-bottom:2px; }
+  .row { min-height:22px;padding:2px 4px; }
+  .key { height:35px;font-size:15px; }
+  .key small { font-size:6px; }
+  .center { min-height:80px;gap:3px; }
+  .big { font-size:clamp(27px,7vw,48px); }
+  .count { font-size:48px; }
+  .metric { padding:3px 2px; }
+  .metric strong { font-size:14px; }
+  .guide { max-height:24px;padding:3px 5px;font-size:8px; }
+  .status { font-size:9px;min-height:11px; }
+}
+@media (orientation:portrait) {
+  .wrap {
+    position:fixed;
+    left:0;
+    top:0;
+    width:100dvh;
+    height:100vw;
+    height:100svw;
+    transform-origin:top left;
+    transform:rotate(90deg) translateY(-100%);
+  }
+}
+</style>
+</head>
+
+<body>
+<main class="wrap">
+  <section class="device">
+    <div class="brand">
+      <div>RACE<b>LAB</b> <small>GPS PERFORMANCE</small></div>
+      <small>RL-GPS / 01</small>
+    </div>
+
+    <div class="lcd">
+      <div class="lcdtop">
+        <span>RACELAB GPS</span>
+        <button id="gpsText">NO FIX</button>
+      </div>
+      <div id="screen" class="screen"></div>
+    </div>
+
+    <div class="keys">
+      <button class="key" id="up">▲<small>UP</small></button>
+      <button class="key" id="down">▼<small>DOWN</small></button>
+      <button class="key" id="back">◀<small>BACK</small></button>
+      <button class="key" id="enter">▶<small>ENTER</small></button>
+    </div>
+
+    <div class="legend">
+      <span>GPS PERFORMANCE</span>
+      <span>RACELAB GPS</span>
+    </div>
+  </section>
+
+  <div id="status" class="status">ENTER untuk mulai.</div>
+  <div class="guide">
+    <b>PANDUAN:</b> Tekan NO FIX, izinkan lokasi Chrome, lalu tunggu GPS FIX.
+  </div>
+</main>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const screen = $("screen");
+  const statusEl = $("status");
+
+  const menus = ["Lap Timer","Drag Meter","History","Settings"];
+  const dragModes = ["Speed","Distance","Custom"];
+  const speedModes = ["0-60 km/h","0-80 km/h","0-100 km/h"];
+  const distanceModes = ["100 m","200 m","201 m","402 m","Custom"];
+
+  let page = "boot";
+  let sel = 0;
+  let mode = "Distance";
+  let custom = 200;
+  let gps = false;
+  let fix = false;
+  let watch = null;
+  let last = null;
+  let test = null;
+  let records = [];
+  let lastSummary = null;
+  let settings = {units:"km/h"};
+
+  try {
+    const data = JSON.parse(localStorage.getItem("racelabData") || "{}");
+    records = Array.isArray(data.records) ? data.records : [];
+    settings = data.settings || settings;
+    test = data.test || null;
+    if (test) page = "running";
+  } catch(e) {}
+
+  function save() {
+    try {
+      localStorage.setItem("racelabData", JSON.stringify({
+        records, settings, test, page
+      }));
+    } catch(e) {}
+  }
+
+  function msg(s) { statusEl.textContent = s; }
+
+  function timeFormat(ms) {
+    return Math.max(0,ms/1000).toFixed(2)+" s";
+  }
+
+  function top(title) {
+    return `<div class="heading">${title}</div>`;
+  }
+
+  function rows(items,selected) {
+    return items.map((item,i) => {
+      const label = typeof item === "string" ? item : item.label;
+      const value = typeof item === "string" ? "" : item.value || "";
+      return `<div class="row ${i===selected?"selected":""}">
+        <span>${i===selected?"▶":" "}</span>
+        <span>${label}</span><span class="value">${value}</span>
+      </div>`;
+    }).join("");
+  }
+
+  function footer(a="▲▼ SELECT",b="▶ ENTER") {
+    return `<div class="footer"><span>${a}</span><span>${b}</span></div>`;
+  }
+
+  function render() {
+    $("gpsText").textContent = fix ? "GPS FIX" : gps ? "SEARCH" : "NO FIX";
+
+    if (page==="boot") {
+      screen.innerHTML = `<div class="center">
+        <div class="logo">RACE<b>LAB</b></div>
+        <div class="small">GPS PERFORMANCE METER</div>
+        <div style="height:3px;width:60%;background:#d8393d"></div>
+        <div class="small">PRESS ENTER</div>
+      </div>`;
+    } else if (page==="main") {
+      screen.innerHTML = top("MAIN MENU")+rows(menus,sel)+footer();
+    } else if (page==="dragModes") {
+      screen.innerHTML = top("DRAG METER")+rows(dragModes,sel)+footer();
+    } else if (page==="discipline") {
+      const opts = mode==="Speed" ? speedModes : distanceModes;
+      screen.innerHTML = top(mode+" TEST")+rows(opts,sel)+footer();
+    } else if (page==="custom") {
+      screen.innerHTML = top("CUSTOM DISTANCE")+`
+        <div class="center">
+          <div class="small">TARGET DISTANCE</div>
+          <div class="big">${custom}</div><div>METERS</div>
+          <div class="small">▲▼ CHANGE · ▶ CONFIRM</div>
+        </div>`+footer();
+    } else if (page==="gps") {
+      screen.innerHTML = top("GPS STATUS")+`
+        <table>
+          <tr><td>RECEIVER</td><td>${gps?"ACTIVE":"OFF"}</td></tr>
+          <tr><td>POSITION</td><td>${fix?"GPS FIX":"NO FIX"}</td></tr>
+          <tr><td>ACCURACY</td><td>${last?last.accuracy.toFixed(1)+" m":"--"}</td></tr>
+          <tr><td>SPEED</td><td>${last && last.speed!=null?(last.speed*3.6).toFixed(1):"0.0"} km/h</td></tr>
+        </table>`+footer("","◀ BACK");
+    } else if (page==="running") {
+      if (!test) { page="main";return render(); }
+      screen.innerHTML = top("TEST RUNNING")+`
+        <div class="small">${test.label}</div>
+        <div class="center" style="height:auto;min-height:0">
+          <div class="small">LIVE SPEED</div>
+          <div class="big">${(test.speed||0).toFixed(1)}</div>
+          <div>KM/H</div>
+        </div>
+        <div class="metrics">
+          <div class="metric"><label>DISTANCE</label><strong>${(test.distance||0).toFixed(1)} m</strong></div>
+          <div class="metric"><label>TOP SPEED</label><strong>${(test.top||0).toFixed(1)} km/h</strong></div>
+          <div class="metric"><label>TIME</label><strong>${timeFormat(test.startTime?Date.now()-test.startTime:0)}</strong></div>
+          <div class="metric"><label>TARGET</label><strong>${test.target} ${test.speedMode?"km/h":"m"}</strong></div>
+        </div>`+footer("","◀ STOP");
+    } else if (page==="summary") {
+      const r=lastSummary;
+      screen.innerHTML = top("TEST RESULT")+(r?`
+        <table>
+          <tr><td>TEST</td><td>${r.label}</td></tr>
+          <tr><td>DISTANCE</td><td>${r.distance_m} m</td></tr>
+          <tr><td>TIME</td><td>${r.time_s} s</td></tr>
+          <tr><td>TOP SPEED</td><td>${r.top_speed_kmh} km/h</td></tr>
+          <tr><td>STATUS</td><td>${r.status}</td></tr>
+        </table><div class="small" style="text-align:center;margin-top:8px">ENTER = TES BARU</div>`:"NO DATA")+footer("","▶ ULANGI");
+    } else if (page==="history") {
+      screen.innerHTML = top("TEST HISTORY")+
+        (records.length?rows(records.slice(0,8).map(r=>({
+          label:new Date(r.date).toLocaleDateString("id-ID"),
+          value:r.top_speed_kmh+" km/h"
+        })),sel):'<div class="center">NO HISTORY</div>')+
+        footer("▲▼ SELECT","▶ DETAIL");
+    } else if (page==="historyDetail") {
+      const r=records[sel];
+      screen.innerHTML = top("RESULT DETAIL")+(r?`
+        <table>
+          <tr><td>DATE</td><td>${new Date(r.date).toLocaleString("id-ID")}</td></tr>
+          <tr><td>TEST</td><td>${r.label}</td></tr>
+          <tr><td>DISTANCE</td><td>${r.distance_m} m</td></tr>
+          <tr><td>TIME</td><td>${r.time_s} s</td></tr>
+          <tr><td>TOP SPEED</td><td>${r.top_speed_kmh} km/h</td></tr>
+        </table>`:"NO DATA")+footer("","◀ BACK");
+    } else if (page==="settings") {
+      screen.innerHTML = top("SETTINGS")+rows([
+        {label:"Units",value:settings.units},
+        {label:"GPS Status",value:fix?"FIX":gps?"SEARCH":"OFF"},
+        {label:"Export CSV",value:"▶"},
+        {label:"Clear History",value:"▶"}
+      ],sel)+footer();
+    } else if (page==="lap") {
+      screen.innerHTML = top("LAP TIMER")+`
+        <div class="center">
+          <div>LAP TIMER</div><div class="small">FITUR BELUM TERSEDIA</div>
+        </div>`+footer("","◀ BACK");
+    }
+  }
+
+  function distance(a,b) {
+    const R=6371000;
+    const rad=x=>x*Math.PI/180;
+    const dLat=rad(b.lat-a.lat),dLon=rad(b.lon-a.lon);
+    const q=Math.sin(dLat/2)**2+
+      Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLon/2)**2;
+    return R*2*Math.atan2(Math.sqrt(q),Math.sqrt(1-q));
+  }
+
+  function startGPS() {
+    if (!navigator.geolocation) {
+      msg("Browser tidak mendukung GPS.");return;
+    }
+    if (!window.isSecureContext) {
+      msg("GPS butuh HTTPS. Gunakan GitHub Pages atau Vercel.");return;
+    }
+    if (gps) {
+      msg(fix?"GPS FIX aktif.":"Sedang mencari GPS...");
+      return;
+    }
+
+    gps=true;fix=false;render();
+    msg("Izinkan akses lokasi di Chrome.");
+
+    watch=navigator.geolocation.watchPosition(pos=>{
+      const c=pos.coords;
+      last={
+        lat:c.latitude,lon:c.longitude,
+        accuracy:c.accuracy||9999,
+        speed:c.speed,t:pos.timestamp||Date.now()
+      };
+      fix=last.accuracy<=50;
+
+      if (test) {
+        const v=c.speed==null?0:Math.max(0,c.speed*3.6);
+        test.speed=v;
+
+        if (test.phase==="armed" && v>=3) {
+          test.phase="running";
+          test.startTime=Date.now();
+          test.last={...last};
+          test.distance=0;
+          msg("Pengukuran dimulai.");
+        } else if (test.phase==="running") {
+          if (test.last) {
+            const d=distance(test.last,last);
+            const dt=Math.max(0,(last.t-test.last.t)/1000);
+            if (d<Math.max(20,dt*30)) test.distance+=d;
+          }
+          test.last={...last};
+          test.top=Math.max(test.top,v);
+
+          if (!test.speedMode && test.distance>=test.target) {
+            finish(false);return;
+          }
+          if (test.speedMode && v>=test.target) {
+            finish(false);return;
+          }
+        }
+      }
+
+      save();render();
+      msg(fix?"GPS FIX · AKURASI "+last.accuracy.toFixed(0)+" M":
+        "SEARCH · AKURASI "+last.accuracy.toFixed(0)+" M");
+    },err=>{
+      fix=false;
+      gps=err.code!==1;
+      msg(err.code===1?"Izin lokasi ditolak. Izinkan lokasi di Chrome.":
+        err.code===2?"GPS belum mendapat posisi. Coba di luar ruangan.":
+        "GPS timeout. Periksa GPS HP lalu coba lagi.");
+      render();
+    },{
+      enableHighAccuracy:true,maximumAge:0,timeout:30000
+    });
+  }
+
+  function beginTest(target,label,speedMode=false) {
+    if (!gps || !fix || !last) {
+      page="gps";render();
+      msg("Aktifkan GPS dan tunggu GPS FIX.");return;
+    }
+    test={
+      label,target,speedMode,distance:0,speed:0,top:0,
+      startTime:null,last:{...last},phase:"countdown",count:5,
+      countdownEnd:Date.now()+1000
+    };
+    page="countdown";
+    save();
+    runCountdown();
+  }
+
+  function runCountdown() {
+    let n=5;
+    screen.innerHTML=top("GET READY")+`
+      <div class="center"><div class="count">${n}</div>
+      <div>PREPARE</div></div>`;
+    let timer=setInterval(()=>{
+      if (page!=="countdown") { clearInterval(timer);return; }
+      n--;
+      if (n<=0) {
+        clearInterval(timer);
+        page="running";
+        test.phase="armed";
+        test.count=0;
+        save();render();
+        msg("GO! Mulai bergerak untuk memulai timer.");
+        return;
+      }
+      screen.innerHTML=top("GET READY")+`
+        <div class="center"><div class="count">${n}</div>
+        <div>PREPARE</div></div>`;
+    },1000);
+  }
+
+  function finish(stopped) {
+    if (!test) return;
+    const t=test;
+    const elapsed=t.startTime?Date.now()-t.startTime:0;
+    lastSummary={
+      date:new Date().toISOString(),
+      label:t.label,target:t.target,
+      distance_m:+(t.distance||0).toFixed(1),
+      time_s:+(elapsed/1000).toFixed(2),
+      top_speed_kmh:+(t.top||0).toFixed(1),
+      status:stopped?"Manual Stop":"Finish"
+    };
+    records.unshift(lastSummary);
+    records=records.slice(0,500);
+    test=null;page="summary";sel=0;
+    save();render();
+    msg(stopped?"Tes dihentikan. Hasil disimpan.":"Tes selesai. Hasil disimpan.");
+  }
+
+  function exportCSV() {
+    if (!records.length) { msg("Belum ada hasil tes.");return; }
+    const data=[["Date","Test","Target","Distance_m","Time_s","TopSpeed_kmh","Status"],
+      ...records.map(r=>[r.date,r.label,r.target,r.distance_m,r.time_s,r.top_speed_kmh,r.status])];
+    const csv=data.map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");
+    const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download="RaceLab-GPS-History.csv";
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    msg("CSV berhasil dibuat.");
+  }
+
+  function enter() {
+    if (page==="boot") {page="main";sel=0;}
+    else if (page==="main") {
+      if (sel===0) page="lap";
+      else if (sel===1) {page="dragModes";sel=0;}
+      else if (sel===2) {page="history";sel=0;}
+      else {page="settings";sel=0;}
+    } else if (page==="dragModes") {
+      mode=dragModes[sel];page="discipline";sel=0;
+    } else if (page==="discipline") {
+      const opts=mode==="Speed"?speedModes:distanceModes;
+      const item=opts[sel];
+      if (mode==="Custom" || (mode==="Distance"&&item==="Custom")) {
+        page="custom";
+      } else if (mode==="Speed") {
+        beginTest(Number(item.match(/\d+/g).pop()),item,true);return;
+      } else {
+        beginTest(Number(item.split(" ")[0]),item,false);return;
+      }
+    } else if (page==="custom") {
+      beginTest(custom,"Custom "+custom+" m",false);return;
+    } else if (page==="summary") {
+      page="dragModes";sel=0;lastSummary=null;
+      msg("Siap untuk tes berikutnya.");
+    } else if (page==="history") {
+      if (records.length) {sel=Math.min(sel,records.length-1);page="historyDetail";}
+    } else if (page==="historyDetail") {
+      page="history";
+    } else if (page==="settings") {
+      if (sel===0) {
+        settings.units=settings.units==="km/h"?"mph":"km/h";
+        msg("Unit: "+settings.units);
+      } else if (sel===1) page="gps";
+      else if (sel===2) exportCSV();
+      else if (sel===3 && confirm("Hapus semua riwayat?")) {
+        records=[];save();msg("Riwayat dihapus.");
+      }
+    }
+    save();render();
+  }
+
+  function back() {
+    if (page==="boot") page="main";
+    else if (page==="main") page="boot";
+    else if (page==="dragModes") {page="main";sel=1;}
+    else if (page==="discipline") {page="dragModes";sel=0;}
+    else if (page==="custom") {page="discipline";sel=0;}
+    else if (page==="countdown") {test=null;page="discipline";sel=0;save();}
+    else if (page==="running") {finish(true);return;}
+    else if (page==="summary") {page="dragModes";sel=0;}
+    else if (page==="history") {page="main";sel=2;}
+    else if (page==="historyDetail") page="history";
+    else if (page==="settings") {page="main";sel=3;}
+    else if (page==="gps" || page==="lap") page="main";
+    save();render();
+  }
+
+  function move(d) {
+    if (page==="main") sel=(sel+d+menus.length)%menus.length;
+    else if (page==="dragModes") sel=(sel+d+dragModes.length)%dragModes.length;
+    else if (page==="discipline") {
+      const opts=mode==="Speed"?speedModes:distanceModes;
+      sel=(sel+d+opts.length)%opts.length;
+    } else if (page==="history") {
+      const n=Math.max(1,Math.min(records.length,8));
+      sel=(sel+d+n)%n;
+    } else if (page==="settings") sel=(sel+d+4)%4;
+    else if (page==="custom") custom=Math.max(20,Math.min(10000,custom+d*10));
+    render();
+  }
+
+  $("up").onclick=()=>move(-1);
+  $("down").onclick=()=>move(1);
+  $("enter").onclick=enter;
+  $("back").onclick=back;
+  $("gpsText").onclick=startGPS;
+
+  document.addEventListener("keydown",e=>{
+    if(e.key==="ArrowUp"){e.preventDefault();move(-1);}
+    else if(e.key==="ArrowDown"){e.preventDefault();move(1);}
+    else if(e.key==="Enter"||e.key==="ArrowRight"){e.preventDefault();enter();}
+    else if(e.key==="Escape"||e.key==="ArrowLeft"){e.preventDefault();back();}
+  });
+
+  if (test) {
+    test.phase="armed";
+    page="running";
+    msg("Tes dipulihkan. Sambungkan GPS lagi jika diperlukan.");
+  }
+
+  render();
+
+  setInterval(()=>{
+    if (page==="running" && test) {
+      render();
+      save();
+    }
+  },500);
+})();
+</script>
+</body>
+</html>
